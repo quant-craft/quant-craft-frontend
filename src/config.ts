@@ -15,7 +15,6 @@ interface Config {
     application: {
         host: {
             backend: string;
-            frontend: string;
         };
     };
 }
@@ -46,8 +45,7 @@ const config: Config = {
     },
     application: {
         host: {
-            backend: getEnvVar('VITE_BACKEND_URL'),
-            frontend: getEnvVar('VITE_FRONTEND_URL'),
+            backend: getEnvVar('VITE_BACKEND_URL')
         },
     },
 };
@@ -66,19 +64,15 @@ export function getBackendUrl() {
     return config.application.host.backend;
 }
 
-export function getFrontendUrl() {
-    return config.application.host.frontend;
-}
-
 export function getKakaoOAuthUrl() {
     const { clientId, authServerUrl } = getOAuthConfig('kakao');
-    const redirectUri = `${getFrontendUrl()}/oauth/callback/kakao`;
+    const redirectUri = `${window.location.origin}/oauth/callback/kakao`;
     return `${authServerUrl}/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
 
 export function getGoogleOAuthUrl() {
     const { clientId, authServerUrl, scopes } = config.oauth.google;
-    const redirectUri = `${getFrontendUrl()}/oauth/callback/google`;
+    const redirectUri = `${window.location.origin}/oauth/callback/google`;
 
     return `${authServerUrl}?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes.join(' '))}`;
 }
