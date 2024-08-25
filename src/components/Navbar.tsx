@@ -1,4 +1,5 @@
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import LoginButton from "./auth/LoginButton.tsx";
 
 const Navbar = () => {
     return (
@@ -13,7 +14,7 @@ const Navbar = () => {
                     <Button color="inherit">Pricing</Button>
                     <Button color="inherit">Support</Button>
                 </Box>
-                <Button color="primary" variant="contained">Login</Button>
+                <LoginButton />
             </Toolbar>
         </AppBar>
     );
