@@ -5,6 +5,7 @@ import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
 import Footer from './components/Footer';
 import OAuthCallback from './components/auth/OAuthCallback.tsx';
+import MyPage from "./components/user/MyProfile.tsx";
 
 const theme = createTheme({
 });
@@ -19,6 +20,7 @@ function App() {
                     <Routes>
                         <Route path="/" element={<HomePage />} />
                         <Route path="/oauth/callback/:provider" element={<OAuthCallback />} />
+                        <Route path="/mypage" element={<MyPage />} />
                     </Routes>
                 </Container>
                 <Footer />
