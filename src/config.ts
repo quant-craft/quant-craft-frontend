@@ -12,6 +12,9 @@ interface Config {
             scopes: string[];
         };
     };
+    tossPayments: {
+        clientKey: string;
+    }
     application: {
         host: {
             backend: string;
@@ -43,6 +46,9 @@ const config: Config = {
             ],
         },
     },
+    tossPayments: {
+        clientKey: getEnvVar('VITE_TOSS_PAYMENTS_CLIENT_KEY'),
+    },
     application: {
         host: {
             backend: getEnvVar('VITE_BACKEND_URL')
@@ -58,6 +64,10 @@ export function getConfig<K extends keyof Config>(key: K): Config[K] {
 
 export function getOAuthConfig(provider: 'kakao' | 'google') {
     return config.oauth[provider];
+}
+
+export function getTossPaymentsClientKey() {
+    return config.tossPayments.clientKey;
 }
 
 export function getBackendUrl() {

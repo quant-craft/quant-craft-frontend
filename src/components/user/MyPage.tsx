@@ -4,7 +4,13 @@ import {
     List, ListItem, ListItemText, Button, Modal, TextField
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { getBackendUrl } from '../../config';
+import {getBackendUrl, getTossPaymentsClientKey} from '../../config';
+
+declare global {
+    interface Window {
+        TossPayments?: any;
+    }
+}
 
 interface UserInfo {
     nickname: string;
@@ -16,7 +22,7 @@ interface UserInfo {
 interface PointChargeModalProps {
     open: boolean;
     onClose: () => void;
-    onCharge: (amount: number) => void;
+    userInfo: UserInfo | null;
 }
 
 const SidebarItem = styled(ListItem)(({ theme }) => ({
@@ -31,13 +37,40 @@ const ContentPaper = styled(Paper)(({ theme }) => ({
     height: '100%',
 }));
 
-const PointChargeModal: React.FC<PointChargeModalProps> = ({ open, onClose, onCharge }) => {
+const PointChargeModal: React.FC<PointChargeModalProps> = ({ open, onClose, userInfo }) => {
     const [chargeAmount, setChargeAmount] = useState<number>(5000);
     const [inputError, setInputError] = useState<string>('');
 
+    useEffect(() => {
+        const script = document.createElement('script');
+        script.src = 'https://js.tosspayments.com/v1/payment';
+        script.async = true;
+        document.body.appendChild(script);
+
+        return () => {
+            document.body.removeChild(script);
+        };
+    }, []);
+
     const handleCharge = () => {
         if (chargeAmount >= 5000) {
-            onCharge(chargeAmount);
+            const clientKey = getTossPaymentsClientKey();
+            const tossPayments = window.TossPayments(clientKey);
+
+            tossPayments.requestPayment('카드', {
+                amount: chargeAmount,
+                orderId: 'POINT-CHARGE-' + Date.now(),
+                orderName: '포인트 충전',
+                customerName: userInfo?.nickname || '사용자',
+                successUrl: `${window.location.origin}/toss-payment-success`,
+                failUrl: `${window.location.origin}/toss-payment-fail`,
+            }).catch((error: Error) => {
+                if (error.name === 'USER_CANCEL') {
+                    console.log('사용자가 결제를 취소했습니다.');
+                } else {
+                    console.error('결제 오류:', error);
+                }
+            });
             onClose();
         } else {
             setInputError('최소 충전 금액은 5,000원입니다.');
@@ -160,13 +193,6 @@ const MyPage: React.FC = () => {
             });
     }, []);
 
-    const handleChargePoints = async (amount: number) => {
-        // Here you would typically integrate with a payment gateway
-        // For this example, we'll just update the local state
-        setUserInfo(prevInfo => prevInfo ? {...prevInfo, point: prevInfo.point + amount} : null);
-        // In a real application, you'd also want to update this on the server
-    };
-
     if (loading) {
         return <CircularProgress />;
     }
@@ -207,7 +233,7 @@ const MyPage: React.FC = () => {
             <PointChargeModal
                 open={isChargeModalOpen}
                 onClose={() => setIsChargeModalOpen(false)}
-                onCharge={handleChargePoints}
+                userInfo={userInfo}
             />
         </Container>
     );
