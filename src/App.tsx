@@ -5,7 +5,7 @@ import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
 import Footer from './components/Footer';
 import OAuthCallback from './components/auth/OAuthCallback.tsx';
-import MyPage from "./components/user/MyProfile.tsx";
+import MyPage from "./components/user/MyPage.tsx";
 
 const theme = createTheme({
 });
