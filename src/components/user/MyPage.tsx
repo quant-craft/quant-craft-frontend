@@ -6,8 +6,8 @@ import {
 import { styled } from '@mui/material/styles';
 import { getBackendUrl } from '../../config';
 import TossPaymentsModal from "../payment/TossPaymentsModal";
-import UserInfoTab from './UserInfoTab';
-import PointInfoTab from "./PointInfoTab.tsx";
+import PointHistoryTab from './PointHistoryTab';
+import PaymentHistoryTab from './PaymentHistoryTab';
 
 interface UserInfo {
     nickname: string;
@@ -42,37 +42,37 @@ const MyPage: React.FC = () => {
                 throw new Error('로그인이 필요합니다.');
             }
 
-            const response = await fetch(`${getBackendUrl()}/api/users`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                },
-            });
+            try {
+                const response = await fetch(`${getBackendUrl()}/api/users`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                    },
+                });
 
-            if (!response.ok) {
-                throw new Error('사용자 정보를 가져오는데 실패했습니다.');
+                if (!response.ok) {
+                    throw new Error('사용자 정보를 가져오는데 실패했습니다.');
+                }
+
+                const data = await response.json();
+                setUserInfo(data);
+            } catch (err) {
+                console.error('Error fetching user info:', err);
+                setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
+            } finally {
+                setLoading(false);
             }
-
-            return response.json();
         };
 
-        fetchUserInfo()
-            .then(data => {
-                setUserInfo(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
-                setLoading(false);
-            });
+        fetchUserInfo();
     }, []);
-
-    if (loading) return <CircularProgress />;
-    if (error) return <Typography color="error">{error}</Typography>;
-    if (!userInfo) return <Typography>사용자 정보를 불러올 수 없습니다.</Typography>;
 
     const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
         setActiveTab(newValue);
     };
+
+    if (loading) return <CircularProgress />;
+    if (error) return <Typography color="error">{error}</Typography>;
+    if (!userInfo) return <Typography>사용자 정보를 불러올 수 없습니다.</Typography>;
 
     return (
         <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -86,6 +86,9 @@ const MyPage: React.FC = () => {
                             <SidebarItem onClick={() => setActiveTab(1)}>
                                 <ListItemText primary="포인트 정보" />
                             </SidebarItem>
+                            <SidebarItem onClick={() => setActiveTab(2)}>
+                                <ListItemText primary="결제 내역" />
+                            </SidebarItem>
                         </List>
                     </Paper>
                 </Grid>
@@ -94,19 +97,25 @@ const MyPage: React.FC = () => {
                         <Tabs value={activeTab} onChange={handleTabChange}>
                             <Tab label="사용자 정보" />
                             <Tab label="포인트 정보" />
+                            <Tab label="결제 내역" />
                         </Tabs>
                         <Box sx={{ mt: 2 }}>
                             {activeTab === 0 && (
-                                <UserInfoTab
-                                    userInfo={userInfo}
-                                    onChargeClick={() => setIsChargeModalOpen(true)}
-                                />
+                                <>
+                                    <Typography variant="h6" gutterBottom>사용자 정보</Typography>
+                                    <Typography><strong>닉네임:</strong> {userInfo.nickname}</Typography>
+                                    <Typography><strong>이메일:</strong> {userInfo.email}</Typography>
+                                    <Typography><strong>로그인 방식:</strong> {userInfo.oauthProvider}</Typography>
+                                </>
                             )}
                             {activeTab === 1 && (
-                                <PointInfoTab
+                                <PointHistoryTab
                                     userPoint={userInfo.point}
                                     onChargeClick={() => setIsChargeModalOpen(true)}
                                 />
+                            )}
+                            {activeTab === 2 && (
+                                <PaymentHistoryTab />
                             )}
                         </Box>
                     </ContentPaper>
