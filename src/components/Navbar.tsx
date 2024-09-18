@@ -1,5 +1,7 @@
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 import LoginButton from "./auth/LoginButton.tsx";
+
 
 const Navbar = () => {
     return (
@@ -9,10 +11,8 @@ const Navbar = () => {
                     QuantCraft
                 </Typography>
                 <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                    <Button color="inherit">Home</Button>
-                    <Button color="inherit">Services</Button>
-                    <Button color="inherit">Pricing</Button>
-                    <Button color="inherit">Support</Button>
+                    <Button color="inherit" component={RouterLink} to ="/">Home</Button>
+                    <Button color="inherit" component={RouterLink} to="/market">Market</Button>
                 </Box>
                 <LoginButton />
             </Toolbar>
