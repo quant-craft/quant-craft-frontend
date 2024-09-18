@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
     Container, Typography, Paper, Box, CircularProgress, Grid,
-    List, ListItem, ListItemText, Button
+    List, ListItem, ListItemText, Tabs, Tab
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { getBackendUrl } from '../../config';
-import TossPaymentsModal from "../payment/TossPaymentsModal.tsx";
+import TossPaymentsModal from "../payment/TossPaymentsModal";
+import UserInfoTab from './UserInfoTab';
+import PointInfoTab from "./PointInfoTab.tsx";
 
 interface UserInfo {
     nickname: string;
@@ -31,6 +33,7 @@ const MyPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState(0);
 
     useEffect(() => {
         const fetchUserInfo = async () => {
@@ -63,13 +66,13 @@ const MyPage: React.FC = () => {
             });
     }, []);
 
-    if (loading) {
-        return <CircularProgress />;
-    }
+    if (loading) return <CircularProgress />;
+    if (error) return <Typography color="error">{error}</Typography>;
+    if (!userInfo) return <Typography>사용자 정보를 불러올 수 없습니다.</Typography>;
 
-    if (error) {
-        return <Typography color="error">{error}</Typography>;
-    }
+    const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
+        setActiveTab(newValue);
+    };
 
     return (
         <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -77,25 +80,34 @@ const MyPage: React.FC = () => {
                 <Grid item xs={12} md={3}>
                     <Paper elevation={3}>
                         <List component="nav">
-                            <SidebarItem>
+                            <SidebarItem onClick={() => setActiveTab(0)}>
                                 <ListItemText primary="사용자 정보" />
+                            </SidebarItem>
+                            <SidebarItem onClick={() => setActiveTab(1)}>
+                                <ListItemText primary="포인트 정보" />
                             </SidebarItem>
                         </List>
                     </Paper>
                 </Grid>
                 <Grid item xs={12} md={9}>
                     <ContentPaper elevation={3}>
-                        <Box>
-                            <Typography variant="h6" gutterBottom>사용자 정보</Typography>
-                            <Typography><strong>닉네임:</strong> {userInfo?.nickname}</Typography>
-                            <Typography><strong>이메일:</strong> {userInfo?.email}</Typography>
-                            <Typography><strong>로그인 방식:</strong> {userInfo?.oauthProvider}</Typography>
-                            <Box display="flex" alignItems="center" mt={2}>
-                                <Typography><strong>포인트:</strong> {userInfo?.point}</Typography>
-                                <Button variant="contained" color="primary" size="small" sx={{ ml: 2 }} onClick={() => setIsChargeModalOpen(true)}>
-                                    포인트 충전
-                                </Button>
-                            </Box>
+                        <Tabs value={activeTab} onChange={handleTabChange}>
+                            <Tab label="사용자 정보" />
+                            <Tab label="포인트 정보" />
+                        </Tabs>
+                        <Box sx={{ mt: 2 }}>
+                            {activeTab === 0 && (
+                                <UserInfoTab
+                                    userInfo={userInfo}
+                                    onChargeClick={() => setIsChargeModalOpen(true)}
+                                />
+                            )}
+                            {activeTab === 1 && (
+                                <PointInfoTab
+                                    userPoint={userInfo.point}
+                                    onChargeClick={() => setIsChargeModalOpen(true)}
+                                />
+                            )}
                         </Box>
                     </ContentPaper>
                 </Grid>
@@ -103,7 +115,7 @@ const MyPage: React.FC = () => {
             <TossPaymentsModal
                 open={isChargeModalOpen}
                 onClose={() => setIsChargeModalOpen(false)}
-                nickname={userInfo?.nickname ?? null}
+                nickname={userInfo.nickname}
             />
         </Container>
     );
