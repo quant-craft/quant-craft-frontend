@@ -9,9 +9,10 @@ import MyPage from "./components/user/MyPage.tsx";
 import TossPaymentsSuccessCallback from "./components/payment/TossPaymentsSuccessCallback.tsx";
 import TossPaymentFailCallback from "./components/payment/TossPaymentsFailCallback.tsx";
 import Market from "./components/market/Market.tsx";
-import StrategyDetail from "./components/market/StrategyDetail.tsx";
+import StrategyItemDetail from "./components/market/StrategyItemDetail.tsx";
 
 const theme = createTheme({
+    // Theme configuration remains unchanged
 });
 
 function App() {
@@ -26,7 +27,7 @@ function App() {
                         <Route path="/oauth/callback/:provider" element={<OAuthCallback />} />
                         <Route path="/mypage" element={<MyPage />} />
                         <Route path="/market" element={<Market />} />
-                        <Route path="/strategy/:id" element={<StrategyDetail />} />
+                        <Route path="/strategy-item/:id" element={<StrategyItemDetail />} />
                         <Route path="/toss-payment-success" element={<TossPaymentsSuccessCallback />} />
                         <Route path="/toss-payment-fail" element={<TossPaymentFailCallback />} />
                     </Routes>
