@@ -24,7 +24,7 @@ interface Strategy {
 
 interface UserStrategyResponse {
     user: User;
-    strategyItems: Strategy[];
+    strategies: Strategy[];
 }
 
 const MyStrategiesTab: React.FC = () => {
@@ -72,7 +72,7 @@ const MyStrategiesTab: React.FC = () => {
     return (
         <>
             <Typography variant="h6" gutterBottom>나의 전략</Typography>
-            {userStrategies.strategyItems.length > 0 ? (
+            {userStrategies.strategies.length > 0 ? (
                 <TableContainer component={Paper}>
                     <Table>
                         <TableHead>
@@ -88,7 +88,7 @@ const MyStrategiesTab: React.FC = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {userStrategies.strategyItems.map((strategy) => (
+                            {userStrategies.strategies.map((strategy) => (
                                 <TableRow key={strategy.id}>
                                     <TableCell>{strategy.name}</TableCell>
                                     <TableCell>{strategy.description}</TableCell>
