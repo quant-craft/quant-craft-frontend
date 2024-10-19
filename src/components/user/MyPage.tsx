@@ -8,6 +8,8 @@ import { getBackendUrl } from '../../config';
 import TossPaymentsModal from "../payment/TossPaymentsModal";
 import PointHistoryTab from './PointHistoryTab';
 import PaymentHistoryTab from './PaymentHistoryTab';
+import UserInfoTab from './UserInfoTab';
+import MyStrategiesTab from './MyStrategiesTab';
 
 interface UserInfo {
     nickname: string;
@@ -89,6 +91,9 @@ const MyPage: React.FC = () => {
                             <SidebarItem onClick={() => setActiveTab(2)}>
                                 <ListItemText primary="결제 내역" />
                             </SidebarItem>
+                            <SidebarItem onClick={() => setActiveTab(3)}>
+                                <ListItemText primary="나의 전략" />
+                            </SidebarItem>
                         </List>
                     </Paper>
                 </Grid>
@@ -98,15 +103,14 @@ const MyPage: React.FC = () => {
                             <Tab label="사용자 정보" />
                             <Tab label="포인트 정보" />
                             <Tab label="결제 내역" />
+                            <Tab label="나의 전략" />
                         </Tabs>
                         <Box sx={{ mt: 2 }}>
                             {activeTab === 0 && (
-                                <>
-                                    <Typography variant="h6" gutterBottom>사용자 정보</Typography>
-                                    <Typography><strong>닉네임:</strong> {userInfo.nickname}</Typography>
-                                    <Typography><strong>이메일:</strong> {userInfo.email}</Typography>
-                                    <Typography><strong>로그인 방식:</strong> {userInfo.oauthProvider}</Typography>
-                                </>
+                                <UserInfoTab
+                                    userInfo={userInfo}
+                                    onChargeClick={() => setIsChargeModalOpen(true)}
+                                />
                             )}
                             {activeTab === 1 && (
                                 <PointHistoryTab
@@ -116,6 +120,9 @@ const MyPage: React.FC = () => {
                             )}
                             {activeTab === 2 && (
                                 <PaymentHistoryTab />
+                            )}
+                            {activeTab === 3 && (
+                                <MyStrategiesTab />
                             )}
                         </Box>
                     </ContentPaper>

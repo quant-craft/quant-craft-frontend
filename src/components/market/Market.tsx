@@ -7,22 +7,21 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useNavigate } from 'react-router-dom';
 import { getBackendUrl } from '../../config';
 
-interface Strategy {
+interface StrategyItem {
     id: number;
     name: string;
     description: string;
     price: number;
-    path: string;
 }
 
-interface StrategiesResponse {
+interface StrategyItemsResponse {
     totalStrategyCount: number;
     totalPage: number;
-    strategies: Strategy[];
+    strategies: StrategyItem[];
 }
 
 const Market: React.FC = () => {
-    const [strategies, setStrategies] = useState<Strategy[]>([]);
+    const [strategyItems, setStrategyItems] = useState<StrategyItem[]>([]);
     const [totalPages, setTotalPages] = useState(0);
     const [page, setPage] = useState(1);
     const [sortOption, setSortOption] = useState('DEFAULT');
@@ -31,7 +30,7 @@ const Market: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
-    const fetchStrategies = useCallback(async () => {
+    const fetchStrategyItems = useCallback(async () => {
         setLoading(true);
         const accessToken = localStorage.getItem('accessToken');
 
@@ -43,7 +42,7 @@ const Market: React.FC = () => {
 
         try {
             const baseUrl = getBackendUrl();
-            const endpoint = currentSearchKeyword ? '/api/strategies/search' : '/api/strategies/paging';
+            const endpoint = currentSearchKeyword ? '/api/strategy-items/search' : '/api/strategy-items/paging';
             const url = new URL(`${baseUrl}${endpoint}`);
 
             url.searchParams.append('page', page.toString());
@@ -61,22 +60,22 @@ const Market: React.FC = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to fetch strategies');
+                throw new Error('Failed to fetch strategy items');
             }
 
-            const data: StrategiesResponse = await response.json();
-            setStrategies(data.strategies);
+            const data: StrategyItemsResponse = await response.json();
+            setStrategyItems(data.strategies);
             setTotalPages(data.totalPage);
         } catch (error) {
-            console.error('Error fetching strategies:', error);
+            console.error('Error fetching strategy items:', error);
         } finally {
             setLoading(false);
         }
     }, [page, sortOption, currentSearchKeyword]);
 
     useEffect(() => {
-        fetchStrategies();
-    }, [fetchStrategies]);
+        fetchStrategyItems();
+    }, [fetchStrategyItems]);
 
     const handleSortChange = (event: SelectChangeEvent) => {
         setSortOption(event.target.value as string);
@@ -100,10 +99,10 @@ const Market: React.FC = () => {
 
     return (
         <Container maxWidth="lg" sx={{ mt: 4 }}>
-            <Typography variant="h4" gutterBottom>Strategy Marketplace</Typography>
+            <Typography variant="h4" gutterBottom>Strategy Item Marketplace</Typography>
             <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between' }}>
                 <TextField
-                    label="Search strategies"
+                    label="Search strategy items"
                     variant="outlined"
                     value={searchKeyword}
                     onChange={(e) => setSearchKeyword(e.target.value)}
@@ -135,23 +134,23 @@ const Market: React.FC = () => {
                 <Typography>Loading...</Typography>
             ) : (
                 <Grid container spacing={3}>
-                    {strategies.map((strategy) => (
-                        <Grid item xs={12} sm={6} md={4} key={strategy.id}>
+                    {strategyItems.map((item) => (
+                        <Grid item xs={12} sm={6} md={4} key={item.id}>
                             <Card>
                                 <CardContent>
-                                    <Typography variant="h6">{strategy.name}</Typography>
+                                    <Typography variant="h6">{item.name}</Typography>
                                     <Typography variant="body2" color="text.secondary">
-                                        {strategy.description}
+                                        {item.description}
                                     </Typography>
                                     <Typography variant="h6" sx={{ mt: 2 }}>
-                                        Price: {strategy.price} points
+                                        Price: {item.price} points
                                     </Typography>
                                 </CardContent>
                                 <CardActions>
                                     <Button
                                         size="small"
                                         color="primary"
-                                        onClick={() => navigate(`/strategy/${strategy.id}`)}
+                                        onClick={() => navigate(`/strategy-item/${item.id}`)}
                                     >
                                         View Details
                                     </Button>
