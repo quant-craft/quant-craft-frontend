@@ -13,6 +13,7 @@ const Navbar = () => {
                 <Box sx={{ display: { xs: 'none', md: 'block' } }}>
                     <Button color="inherit" component={RouterLink} to ="/">Home</Button>
                     <Button color="inherit" component={RouterLink} to="/market">Market</Button>
+                    <Button color="inherit" component={RouterLink} to="/studio">STUDIO</Button>
                 </Box>
                 <LoginButton />
             </Toolbar>
