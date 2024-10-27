@@ -9,7 +9,6 @@ import TossPaymentsModal from "../payment/TossPaymentsModal";
 import PointHistoryTab from './PointHistoryTab';
 import PaymentHistoryTab from './PaymentHistoryTab';
 import UserInfoTab from './UserInfoTab';
-import MyStrategiesTab from './MyStrategiesTab';
 import OrderHistoryTab from './OrderHistoryTab';
 
 interface UserInfo {
@@ -93,9 +92,6 @@ const MyPage: React.FC = () => {
                                 <ListItemText primary="결제 내역" />
                             </SidebarItem>
                             <SidebarItem onClick={() => setActiveTab(3)}>
-                                <ListItemText primary="나의 전략" />
-                            </SidebarItem>
-                            <SidebarItem onClick={() => setActiveTab(4)}>
                                 <ListItemText primary="주문 내역" />
                             </SidebarItem>
                         </List>
@@ -107,7 +103,6 @@ const MyPage: React.FC = () => {
                             <Tab label="사용자 정보" />
                             <Tab label="포인트 정보" />
                             <Tab label="결제 내역" />
-                            <Tab label="나의 전략" />
                             <Tab label="주문 내역" />
                         </Tabs>
                         <Box sx={{ mt: 2 }}>
@@ -126,10 +121,8 @@ const MyPage: React.FC = () => {
                             {activeTab === 2 && (
                                 <PaymentHistoryTab />
                             )}
+
                             {activeTab === 3 && (
-                                <MyStrategiesTab />
-                            )}
-                            {activeTab === 4 && (
                                 <OrderHistoryTab />
                             )}
                         </Box>
