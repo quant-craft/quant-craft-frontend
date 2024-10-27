@@ -5,10 +5,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import ApiKeyManagementTab from './ApiKeyManagementTab';
-
-// 추후 추가될 컴포넌트들을 여기에 임포트합니다.
-// import BacktestingTab from './BacktestingTab';
-// import StrategyDevelopmentTab from './StrategyDevelopmentTab';
+import MyStrategiesTab from './MyStrategiesTab';
 
 const SidebarItem = styled(ListItem)(({ theme }) => ({
     '&:hover': {
@@ -33,11 +30,8 @@ const Studio: React.FC = () => {
         switch (activeTab) {
             case 0:
                 return <ApiKeyManagementTab />;
-            // 추후 다른 탭들을 여기에 추가합니다.
-            // case 1:
-            //     return <BacktestingTab />;
-            // case 2:
-            //     return <StrategyDevelopmentTab />;
+            case 1:
+                return <MyStrategiesTab />;
             default:
                 return <Typography>선택된 탭이 없습니다.</Typography>;
         }
@@ -55,19 +49,12 @@ const Studio: React.FC = () => {
                             >
                                 <ListItemText primary="API Key 관리" />
                             </SidebarItem>
-                            {/* 추후 다른 메뉴 항목들을 여기에 추가합니다. */}
-                            {/* <SidebarItem
+                            <SidebarItem
                                 selected={activeTab === 1}
                                 onClick={() => setActiveTab(1)}
                             >
-                                <ListItemText primary="백테스팅" />
+                                <ListItemText primary="나의 전략" />
                             </SidebarItem>
-                            <SidebarItem
-                                selected={activeTab === 2}
-                                onClick={() => setActiveTab(2)}
-                            >
-                                <ListItemText primary="전략 개발" />
-                            </SidebarItem> */}
                         </List>
                     </Paper>
                 </Grid>
@@ -75,9 +62,7 @@ const Studio: React.FC = () => {
                     <ContentPaper elevation={3}>
                         <Tabs value={activeTab} onChange={handleTabChange}>
                             <Tab label="API Key 관리" />
-                            {/* 추후 다른 탭들을 여기에 추가합니다. */}
-                            {/* <Tab label="백테스팅" />
-                            <Tab label="전략 개발" /> */}
+                            <Tab label="나의 전략" />
                         </Tabs>
                         <Box sx={{ mt: 2 }}>
                             {renderContent()}
