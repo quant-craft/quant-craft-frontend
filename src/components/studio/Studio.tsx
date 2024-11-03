@@ -7,6 +7,7 @@ import { styled } from '@mui/material/styles';
 import ApiKeyManagementTab from './ApiKeyManagementTab';
 import MyStrategiesTab from './MyStrategiesTab';
 import TradingBotsTab from './TradingBotsTab';
+import BackTestingTab from './BackTestingTab';
 
 const SidebarItem = styled(ListItem)(({ theme }) => ({
     '&:hover': {
@@ -35,6 +36,8 @@ const Studio: React.FC = () => {
                 return <MyStrategiesTab />;
             case 2:
                 return <TradingBotsTab />;
+            case 3:
+                return <BackTestingTab />;
             default:
                 return <Typography>선택된 탭이 없습니다.</Typography>;
         }
@@ -64,6 +67,12 @@ const Studio: React.FC = () => {
                             >
                                 <ListItemText primary="트레이딩 봇" />
                             </SidebarItem>
+                            <SidebarItem
+                                selected={activeTab === 3}
+                                onClick={() => setActiveTab(3)}
+                            >
+                                <ListItemText primary="백테스팅" />
+                            </SidebarItem>
                         </List>
                     </Paper>
                 </Grid>
@@ -73,6 +82,7 @@ const Studio: React.FC = () => {
                             <Tab label="API Key 관리" />
                             <Tab label="나의 전략" />
                             <Tab label="트레이딩 봇" />
+                            <Tab label="백테스팅" />
                         </Tabs>
                         <Box sx={{ mt: 2 }}>
                             {renderContent()}
