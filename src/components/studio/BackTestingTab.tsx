@@ -110,6 +110,15 @@ const chartConfig: DeepPartial<ChartOptions> = {
         secondsVisible: false,
         fixLeftEdge: true,
         fixRightEdge: true,
+        tickMarkFormatter: (time: number) => {
+            const date = new Date(time * 1000);
+            return date.toLocaleDateString('ko-KR', {
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric'
+            });
+        }
     },
     handleScroll: {
         mouseWheel: true,
@@ -145,13 +154,19 @@ const BackTestingTab: React.FC = () => {
     const parseEquityCurve = (equityCurve: string): ChartData[] => {
         try {
             const data = JSON.parse(equityCurve);
-            return data.map((item: EquityCurveItem, index: number) => {
-                // Create timestamp from index (5-minute intervals)
-                const baseDate = new Date(startDate);
-                const timestamp = new Date(baseDate.getTime() + index * 5 * 60000);
+            return data.map((item: EquityCurveItem) => {
+                // 각 데이터 포인트마다 timestamp를 정확하게 생성
+                let dateStr = item.DrawdownDuration;
+                if (dateStr === "NaT") {
+                    // 첫 데이터 포인트의 경우 시작일을 사용
+                    dateStr = startDate;
+                } else {
+                    // DrawdownDuration에서 날짜 부분만 추출
+                    dateStr = dateStr.split(' ')[0];
+                }
 
                 return {
-                    time: timestamp.toISOString().split('T')[0],
+                    time: dateStr,
                     value: item.Equity,
                     drawdown: item.DrawdownPct * 100
                 };
@@ -165,13 +180,19 @@ const BackTestingTab: React.FC = () => {
     const parseTrades = (trades: string): TradeData[] => {
         try {
             const data = JSON.parse(trades);
-            return data.map((trade: TradeItem) => ({
-                time: trade.EntryTime.split('T')[0],
-                price: trade.EntryPrice,
-                size: trade.Size,
-                pnl: trade.PnL,
-                color: trade.PnL >= 0 ? '#26a69a' : '#ef5350'
-            }));
+            return data.map((trade: TradeItem) => {
+                // EntryTime에서 정확한 날짜와 시간 추출
+                const entryDate = new Date(trade.EntryTime);
+                const dateStr = entryDate.toISOString().split('T')[0]; // YYYY-MM-DD 형식
+
+                return {
+                    time: dateStr,
+                    price: trade.EntryPrice,
+                    size: trade.Size,
+                    pnl: trade.PnL,
+                    color: trade.PnL >= 0 ? '#26a69a' : '#ef5350'
+                };
+            });
         } catch (error) {
             console.error('Error parsing trades:', error);
             return [];
