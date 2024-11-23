@@ -1,9 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createChart, IChartApi, DeepPartial, ChartOptions } from 'lightweight-charts';
 import {
-    Typography, Button, Box, Grid, Paper,
-    TextField, Alert, CircularProgress, Card, CardContent
+    Typography,
+    Button,
+    Box,
+    Grid,
+    Paper,
+    TextField,
+    Alert,
+    CircularProgress,
+    Card,
+    CardContent
 } from '@mui/material';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { styled } from '@mui/material/styles';
 import { getBackendUrl } from '../../config';
 
 interface BackTestingResult {
@@ -23,7 +32,106 @@ interface BackTestingResult {
     equityCurve: string;
 }
 
+interface ChartData {
+    time: string;
+    value: number;
+    drawdown?: number;
+}
+
+interface TradeData {
+    time: string;
+    price: number;
+    size: number;
+    pnl: number;
+    color: string;
+}
+
+interface TradeItem {
+    Size: number;
+    EntryBar: number;
+    ExitBar: number;
+    EntryPrice: number;
+    ExitPrice: number;
+    PnL: number;
+    ReturnPct: number;
+    EntryTime: string;
+    ExitTime: string;
+    Duration: string;
+}
+
+interface EquityCurveItem {
+    Equity: number;
+    DrawdownPct: number;
+    DrawdownDuration: string;
+}
+
+const ChartContainer = styled('div')`
+    width: 100%;
+    height: 400px;
+`;
+
+const TradesChartContainer = styled('div')`
+    width: 100%;
+    height: 300px;
+`;
+
+const chartConfig: DeepPartial<ChartOptions> = {
+    layout: {
+        background: { color: '#ffffff' },
+        textColor: '#333333',
+    },
+    grid: {
+        vertLines: { color: '#f0f0f0' },
+        horzLines: { color: '#f0f0f0' },
+    },
+    crosshair: {
+        mode: 1,
+        vertLine: {
+            width: 1,
+            color: '#758696',
+            style: 3,
+        },
+        horzLine: {
+            width: 1,
+            color: '#758696',
+            style: 3,
+        },
+    },
+    rightPriceScale: {
+        borderColor: '#dfdfdf',
+        scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+        },
+    },
+    timeScale: {
+        borderColor: '#dfdfdf',
+        timeVisible: true,
+        secondsVisible: false,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+    },
+    handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+    },
+    handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true,
+    },
+};
+
 const BackTestingTab: React.FC = () => {
+    // Refs
+    const equityChartRef = useRef<HTMLDivElement>(null);
+    const tradesChartRef = useRef<HTMLDivElement>(null);
+    const chartInstanceRef = useRef<IChartApi | null>(null);
+    const tradesChartInstanceRef = useRef<IChartApi | null>(null);
+
+    // State
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<BackTestingResult | null>(null);
@@ -33,6 +141,44 @@ const BackTestingTab: React.FC = () => {
     const [cash, setCash] = useState('1000000');
     const [commission, setCommission] = useState('0.0004');
 
+    // Data Parsing Functions
+    const parseEquityCurve = (equityCurve: string): ChartData[] => {
+        try {
+            const data = JSON.parse(equityCurve);
+            return data.map((item: EquityCurveItem, index: number) => {
+                // Create timestamp from index (5-minute intervals)
+                const baseDate = new Date(startDate);
+                const timestamp = new Date(baseDate.getTime() + index * 5 * 60000);
+
+                return {
+                    time: timestamp.toISOString().split('T')[0],
+                    value: item.Equity,
+                    drawdown: item.DrawdownPct * 100
+                };
+            });
+        } catch (error) {
+            console.error('Error parsing equity curve:', error);
+            return [];
+        }
+    };
+
+    const parseTrades = (trades: string): TradeData[] => {
+        try {
+            const data = JSON.parse(trades);
+            return data.map((trade: TradeItem) => ({
+                time: trade.EntryTime.split('T')[0],
+                price: trade.EntryPrice,
+                size: trade.Size,
+                pnl: trade.PnL,
+                color: trade.PnL >= 0 ? '#26a69a' : '#ef5350'
+            }));
+        } catch (error) {
+            console.error('Error parsing trades:', error);
+            return [];
+        }
+    };
+
+    // API Call
     const handleRunBacktest = async () => {
         if (!startDate || !endDate || !strategyId || !cash) {
             setError('모든 필드를 입력해주세요.');
@@ -56,8 +202,8 @@ const BackTestingTab: React.FC = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    startDate: startDate,
-                    endDate: endDate,
+                    startDate,
+                    endDate,
                     strategyId,
                     cash: parseFloat(cash),
                     commission: parseFloat(commission)
@@ -78,180 +224,234 @@ const BackTestingTab: React.FC = () => {
         }
     };
 
-    const parseEquityCurve = (equityCurve: string) => {
-        try {
-            return JSON.parse(equityCurve);
-        } catch {
-            return [];
-        }
-    };
+    // Chart Creation and Update
+    useEffect(() => {
+        if (!result?.equityCurve || !equityChartRef.current) return;
 
-    const parseTrades = (trades: string) => {
-        try {
-            return JSON.parse(trades);
-        } catch {
-            return [];
+        // Clean up previous charts
+        if (chartInstanceRef.current) {
+            chartInstanceRef.current.remove();
         }
-    };
+        if (tradesChartInstanceRef.current) {
+            tradesChartInstanceRef.current.remove();
+        }
 
+        // Create Equity Chart
+        chartInstanceRef.current = createChart(equityChartRef.current, {
+            ...chartConfig,
+            width: equityChartRef.current.clientWidth,
+            height: 400,
+        });
+
+        // Equity Series
+        const equitySeries = chartInstanceRef.current.addAreaSeries({
+            lineColor: '#2962FF',
+            topColor: 'rgba(41, 98, 255, 0.3)',
+            bottomColor: 'rgba(41, 98, 255, 0.05)',
+            lineWidth: 2,
+            priceFormat: {
+                type: 'price',
+                precision: 0,
+                minMove: 1,
+            },
+        });
+
+        // Drawdown Series
+        const drawdownSeries = chartInstanceRef.current.addHistogramSeries({
+            color: '#ef5350',
+            priceFormat: {
+                type: 'percent',
+                precision: 2,
+            },
+            priceScaleId: 'drawdown',
+        });
+
+        chartInstanceRef.current.priceScale('drawdown').applyOptions({
+            scaleMargins: {
+                top: 0.8,
+                bottom: 0,
+            },
+            visible: true,
+        });
+
+        const equityData = parseEquityCurve(result.equityCurve);
+        equitySeries.setData(equityData.map(d => ({ time: d.time, value: d.value })));
+        drawdownSeries.setData(equityData.map(d => ({ time: d.time, value: d.drawdown || 0 })));
+
+        chartInstanceRef.current.timeScale().fitContent();
+
+        // Create Trades Chart
+        if (tradesChartRef.current && result.trades) {
+            tradesChartInstanceRef.current = createChart(tradesChartRef.current, {
+                ...chartConfig,
+                width: tradesChartRef.current.clientWidth,
+                height: 300,
+            });
+
+            // PnL Series
+            const tradePnlSeries = tradesChartInstanceRef.current.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: {
+                    type: 'price',
+                    precision: 2,
+                },
+            });
+
+            // Price Series
+            const priceSeries = tradesChartInstanceRef.current.addLineSeries({
+                color: '#2962FF',
+                lineWidth: 1,
+                priceFormat: {
+                    type: 'price',
+                    precision: 2,
+                },
+            });
+
+            const tradesData = parseTrades(result.trades);
+
+            tradePnlSeries.setData(tradesData.map(trade => ({
+                time: trade.time,
+                value: trade.pnl,
+                color: trade.color
+            })));
+
+            priceSeries.setData(tradesData.map(trade => ({
+                time: trade.time,
+                value: trade.price
+            })));
+
+            tradesChartInstanceRef.current.timeScale().fitContent();
+        }
+
+        // Resize Handler
+        const handleResize = () => {
+            if (equityChartRef.current && chartInstanceRef.current) {
+                chartInstanceRef.current.applyOptions({
+                    width: equityChartRef.current.clientWidth,
+                });
+                chartInstanceRef.current.timeScale().fitContent();
+            }
+            if (tradesChartRef.current && tradesChartInstanceRef.current) {
+                tradesChartInstanceRef.current.applyOptions({
+                    width: tradesChartRef.current.clientWidth,
+                });
+                tradesChartInstanceRef.current.timeScale().fitContent();
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            if (chartInstanceRef.current) {
+                chartInstanceRef.current.remove();
+            }
+            if (tradesChartInstanceRef.current) {
+                tradesChartInstanceRef.current.remove();
+            }
+        };
+    }, [result, startDate]);
+
+    // Render Functions
     const renderMetrics = () => {
         if (!result) return null;
 
+        const metrics = [
+            { label: '수익률', value: `${result.totalReturn.toFixed(2)}%`, color: result.totalReturn >= 0 ? 'success.main' : 'error.main' },
+            { label: '승률', value: `${result.winRate.toFixed(2)}%`, color: 'primary.main' },
+            { label: '최대 낙폭', value: `${result.maxDrawdown.toFixed(2)}%`, color: 'error.main' },
+            { label: '수익 팩터', value: result.profitFactor.toFixed(2), color: 'primary.main' },
+            { label: '총 거래 횟수', value: result.totalTrades, color: 'primary.main' },
+            { label: '최종 자산', value: `₩${result.finalEquity.toLocaleString()}`, color: result.finalEquity >= result.initialCapital ? 'success.main' : 'error.main' },
+        ];
+
         return (
             <Grid container spacing={2}>
-                <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>수익률</Typography>
-                            <Typography variant="h4" color={result.totalReturn >= 0 ? "primary" : "error"}>
-                                {result.totalReturn.toFixed(2)}%
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>승률</Typography>
-                            <Typography variant="h4" color="primary">
-                                {result.winRate.toFixed(2)}%
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>최대 낙폭</Typography>
-                            <Typography variant="h4" color="error">
-                                {result.maxDrawdown.toFixed(2)}%
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                {metrics.map((metric, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                        <Card>
+                            <CardContent>
+                                <Typography variant="subtitle2" gutterBottom>
+                                    {metric.label}
+                                </Typography>
+                                <Typography variant="h4" sx={{ color: metric.color }}>
+                                    {metric.value}
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                ))}
             </Grid>
         );
     };
 
-    const renderEquityCurve = () => {
-        if (!result?.equityCurve) return null;
-
-        const data = parseEquityCurve(result.equityCurve);
-
-        return (
-            <Paper sx={{ p: 2, mt: 2 }}>
-                <Typography variant="h6" gutterBottom>자산 곡선</Typography>
-                <ResponsiveContainer width="100%" height={400}>
-                    <LineChart data={data}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="index" />
-                        <YAxis />
-                        <Tooltip />
-                        <Line
-                            type="monotone"
-                            dataKey="Equity"
-                            stroke="#8884d8"
-                            dot={false}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
-            </Paper>
-        );
-    };
-
-    const renderTrades = () => {
-        if (!result?.trades) return null;
-
-        const trades = parseTrades(result.trades);
-
-        return (
-            <Paper sx={{ p: 2, mt: 2 }}>
-                <Typography variant="h6" gutterBottom>거래 내역</Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={trades}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="EntryTime" />
-                        <YAxis />
-                        <Tooltip />
-                        <Line
-                            type="monotone"
-                            dataKey="PnL"
-                            stroke="#82ca9d"
-                            dot={false}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
-            </Paper>
-        );
-    };
+    const renderInputForm = () => (
+        <Grid container spacing={2}>
+            <Grid item xs={12} md={6}>
+                <TextField
+                    label="시작일"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                />
+            </Grid>
+            <Grid item xs={12} md={6}>
+                <TextField
+                    label="종료일"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                />
+            </Grid>
+            <Grid item xs={12} md={4}>
+                <TextField
+                    label="전략 ID"
+                    value={strategyId}
+                    onChange={(e) => setStrategyId(e.target.value)}
+                    fullWidth
+                />
+            </Grid>
+            <Grid item xs={12} md={4}>
+                <TextField
+                    label="초기 자본"
+                    value={cash}
+                    onChange={(e) => setCash(e.target.value)}
+                    type="number"
+                    fullWidth
+                />
+            </Grid>
+            <Grid item xs={12} md={4}>
+                <TextField
+                    label="수수료율"
+                    value={commission}
+                    onChange={(e) => setCommission(e.target.value)}
+                    type="number"
+                    fullWidth
+                />
+            </Grid>
+        </Grid>
+    );
 
     return (
         <Box>
-            <Typography variant="h6" gutterBottom>백테스팅</Typography>
+            <Typography variant="h5" gutterBottom>백테스팅</Typography>
 
             {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
             )}
 
-            <Paper sx={{ p: 2, mb: 2 }}>
-                <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                        <TextField
-                            label="시작일"
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            fullWidth
-                            InputLabelProps={{
-                                shrink: true,
-                            }}
-                        />
-                    </Grid>
-                    <Grid item xs={12} md={6}>
-                        <TextField
-                            label="종료일"
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            fullWidth
-                            InputLabelProps={{
-                                shrink: true,
-                            }}
-                        />
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        <TextField
-                            label="전략 ID"
-                            value={strategyId}
-                            onChange={(e) => setStrategyId(e.target.value)}
-                            fullWidth
-                        />
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        <TextField
-                            label="초기 자본"
-                            value={cash}
-                            onChange={(e) => setCash(e.target.value)}
-                            type="number"
-                            fullWidth
-                        />
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        <TextField
-                            label="수수료율"
-                            value={commission}
-                            onChange={(e) => setCommission(e.target.value)}
-                            type="number"
-                            fullWidth
-                        />
-                    </Grid>
-                </Grid>
-
+            <Paper sx={{ p: 3, mb: 3 }}>
+                {renderInputForm()}
                 <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
                     <Button
                         variant="contained"
                         onClick={handleRunBacktest}
                         disabled={loading}
+                        size="large"
                     >
                         {loading ? <CircularProgress size={24} /> : '백테스트 실행'}
                     </Button>
@@ -261,8 +461,18 @@ const BackTestingTab: React.FC = () => {
             {result && (
                 <>
                     {renderMetrics()}
-                    {renderEquityCurve()}
-                    {renderTrades()}
+                    <Paper sx={{ p: 3, mt: 3 }}>
+                        <Typography variant="h6" gutterBottom>
+                            자산 곡선
+                        </Typography>
+                        <ChartContainer ref={equityChartRef} />
+                    </Paper>
+                    <Paper sx={{ p: 3, mt: 3 }}>
+                        <Typography variant="h6" gutterBottom>
+                            거래별 수익/손실
+                        </Typography>
+                        <TradesChartContainer ref={tradesChartRef} />
+                    </Paper>
                 </>
             )}
         </Box>
