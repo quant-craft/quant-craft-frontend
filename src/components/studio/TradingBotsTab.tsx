@@ -1,4 +1,3 @@
-// TradingBotsTab.tsx
 import React, { useState, useEffect } from 'react';
 import {
     Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -7,6 +6,7 @@ import {
     FormControl, InputLabel
 } from '@mui/material';
 import { getBackendUrl } from '../../config';
+import TradingMonitoring from './TradingMonitoring';
 
 interface TradingBot {
     id: number;
@@ -60,6 +60,8 @@ const TradingBotsTab: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [monitoringOpen, setMonitoringOpen] = useState(false);
+    const [selectedBotId, setSelectedBotId] = useState<number | null>(null);
     const [newBot, setNewBot] = useState<Partial<TradingBot>>({
         name: '',
         dryRun: false,
@@ -274,13 +276,25 @@ const TradingBotsTab: React.FC = () => {
                                         {strategies.find(strategy => strategy.id === bot.strategyId)?.name || bot.strategyId}
                                     </TableCell>
                                     <TableCell>
-                                        <Button
-                                            variant="outlined"
-                                            color="error"
-                                            onClick={() => handleDelete(bot.id)}
-                                        >
-                                            삭제
-                                        </Button>
+                                        <Box sx={{ display: 'flex', gap: 1 }}>
+                                            <Button
+                                                variant="outlined"
+                                                color="primary"
+                                                onClick={() => {
+                                                    setSelectedBotId(bot.id);
+                                                    setMonitoringOpen(true);
+                                                }}
+                                            >
+                                                모니터링
+                                            </Button>
+                                            <Button
+                                                variant="outlined"
+                                                color="error"
+                                                onClick={() => handleDelete(bot.id)}
+                                            >
+                                                삭제
+                                            </Button>
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -368,6 +382,13 @@ const TradingBotsTab: React.FC = () => {
                     <Button onClick={handleCreate}>추가</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* 모니터링 다이얼로그 */}
+            <TradingMonitoring
+                open={monitoringOpen}
+                onClose={() => setMonitoringOpen(false)}
+                botId={selectedBotId!}
+            />
 
             {/* 에러 메시지 스낵바 */}
             <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError(null)}>
