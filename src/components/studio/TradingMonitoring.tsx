@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Dialog, DialogTitle, DialogContent, Paper, Typography, Box, Button } from '@mui/material';
 import { getBackendUrl } from '../../config';
+import {EventSourcePolyfill} from "event-source-polyfill";
 
 interface TradingMonitoringProps {
     open: boolean;
@@ -17,7 +18,19 @@ const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, bo
     useEffect(() => {
         if (!open) return;
 
-        const eventSource = new EventSource(`${getBackendUrl()}/api/stream/demo-tradings`);
+        const accessToken = localStorage.getItem('accessToken');
+        if (!accessToken) {
+            console.error('로그인이 필요합니다.');
+            return;
+        }
+
+        const eventSource = new EventSourcePolyfill(`${getBackendUrl()}/api/stream/demo-tradings`, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+            heartbeatTimeout: 120000,
+            withCredentials: true
+        });
 
         eventSource.onmessage = (event) => {
             setUpdates(prev => [...prev, event.data]);
