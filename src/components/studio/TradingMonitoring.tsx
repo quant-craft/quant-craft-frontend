@@ -1,5 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Dialog, DialogTitle, DialogContent, Paper, Typography, Box, Button } from '@mui/material';
+import {
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    Paper,
+    Typography,
+    Box,
+    Button,
+    Tabs,
+    Tab
+} from '@mui/material';
 import { getBackendUrl } from '../../config';
 import { EventSourcePolyfill } from "event-source-polyfill";
 
@@ -9,9 +19,38 @@ interface TradingMonitoringProps {
     botId: number;
 }
 
+interface Update {
+    message: string;
+    timestamp: number;
+}
+
+interface TabPanelProps {
+    children?: React.ReactNode;
+    index: number;
+    value: number;
+}
+
+const TabPanel = (props: TabPanelProps) => {
+    const { children, value, index, ...other } = props;
+    return (
+        <div
+            role="tabpanel"
+            hidden={value !== index}
+            {...other}
+        >
+            {value === index && (
+                <Box>{children}</Box>
+            )}
+        </div>
+    );
+};
+
 const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, botId }) => {
-    const [updates, setUpdates] = useState<string[]>([]);
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const [selectedTab, setSelectedTab] = useState(0);
+    const [marketUpdates, setMarketUpdates] = useState<Update[]>([]);
+    const [tradingUpdates, setTradingUpdates] = useState<Update[]>([]);
+    const marketScrollRef = useRef<HTMLDivElement>(null);
+    const tradingScrollRef = useRef<HTMLDivElement>(null);
     const [autoScroll, setAutoScroll] = useState(true);
 
     useEffect(() => {
@@ -34,12 +73,11 @@ const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, bo
             }
         );
 
-        const handleMessage = (message: string) => {
-            setUpdates(prev => [...prev, message]);
-            if (autoScroll && scrollRef.current) {
+        const handleScroll = (ref: React.RefObject<HTMLDivElement>) => {
+            if (autoScroll && ref.current) {
                 setTimeout(() => {
-                    scrollRef.current?.scrollTo({
-                        top: scrollRef.current.scrollHeight,
+                    ref.current?.scrollTo({
+                        top: ref.current.scrollHeight,
                         behavior: 'smooth'
                     });
                 }, 100);
@@ -47,22 +85,86 @@ const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, bo
         };
 
         // @ts-ignore
-        eventSource.addEventListener('INIT', (e) => handleMessage(`Connection established: ${e.data}`));
+        eventSource.addEventListener('INIT', (e) => {
+            const update = { message: `Connection established: ${e.data}`, timestamp: Date.now() };
+            setMarketUpdates(prev => [...prev, update]);
+            setTradingUpdates(prev => [...prev, update]);
+            handleScroll(marketScrollRef);
+            handleScroll(tradingScrollRef);
+        });
+
         // @ts-ignore
-        eventSource.addEventListener('market.info', (e) => handleMessage(`Market Info: ${e.data}`));
+        eventSource.addEventListener('market.info', (e) => {
+            const update = { message: `Market Info: ${e.data}`, timestamp: Date.now() };
+            setMarketUpdates(prev => [...prev, update]);
+            handleScroll(marketScrollRef);
+        });
+
         // @ts-ignore
-        eventSource.addEventListener('trading.events', (e) => handleMessage(`Trading Event: ${e.data}`));
+        eventSource.addEventListener('trading.events', (e) => {
+            const update = { message: `Trading Event: ${e.data}`, timestamp: Date.now() };
+            setTradingUpdates(prev => [...prev, update]);
+            handleScroll(tradingScrollRef);
+        });
+
         // @ts-ignore
-        eventSource.addEventListener('heartbeat', (e) => handleMessage(`Heartbeat: ${e.data}`));
+        eventSource.addEventListener('heartbeat', (e) => {
+            const update = { message: `Heartbeat: ${e.data}`, timestamp: Date.now() };
+            setMarketUpdates(prev => [...prev, update]);
+            setTradingUpdates(prev => [...prev, update]);
+            handleScroll(marketScrollRef);
+            handleScroll(tradingScrollRef);
+        });
 
         eventSource.onerror = () => {
-            handleMessage('Connection lost. Attempting to reconnect...');
+            const update = { message: 'Connection lost. Attempting to reconnect...', timestamp: Date.now() };
+            setMarketUpdates(prev => [...prev, update]);
+            setTradingUpdates(prev => [...prev, update]);
         };
 
         return () => {
             eventSource.close();
         };
     }, [open, botId, autoScroll]);
+
+    const renderUpdates = (updates: Update[], scrollRef: React.RefObject<HTMLDivElement>) => (
+        <Box
+            ref={scrollRef}
+            sx={{
+                height: '500px',
+                overflowY: 'auto',
+                backgroundColor: '#1e1e1e',
+                padding: 1,
+                '& > div': {
+                    borderRadius: 1,
+                    mb: 0.5
+                }
+            }}
+        >
+            {updates.map((update, index) => (
+                <Paper
+                    key={`${update.timestamp}-${index}`}
+                    sx={{
+                        p: 1,
+                        backgroundColor: '#2d2d2d',
+                        border: '1px solid #3d3d3d'
+                    }}
+                >
+                    <Typography
+                        fontFamily="monospace"
+                        sx={{
+                            color: '#d4d4d4',
+                            fontSize: '0.9rem',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-all'
+                        }}
+                    >
+                        {update.message}
+                    </Typography>
+                </Paper>
+            ))}
+        </Box>
+    );
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -77,42 +179,23 @@ const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, bo
                 </Button>
             </DialogTitle>
             <DialogContent>
-                <Box
-                    ref={scrollRef}
-                    sx={{
-                        height: '600px',
-                        overflowY: 'auto',
-                        backgroundColor: '#1e1e1e',
-                        padding: 1,
-                        '& > div': {
-                            borderRadius: 1,
-                            mb: 0.5
-                        }
-                    }}
-                >
-                    {updates.map((update, index) => (
-                        <Paper
-                            key={index}
-                            sx={{
-                                p: 1,
-                                backgroundColor: '#2d2d2d',
-                                border: '1px solid #3d3d3d'
-                            }}
-                        >
-                            <Typography
-                                fontFamily="monospace"
-                                sx={{
-                                    color: '#d4d4d4',
-                                    fontSize: '0.9rem',
-                                    whiteSpace: 'pre-wrap',
-                                    wordBreak: 'break-all'
-                                }}
-                            >
-                                {update}
-                            </Typography>
-                        </Paper>
-                    ))}
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                    <Tabs
+                        value={selectedTab}
+                        onChange={(_, newValue) => setSelectedTab(newValue)}
+                        variant="fullWidth"
+                    >
+                        <Tab label="시장 정보" />
+                        <Tab label="트레이딩 이벤트" />
+                    </Tabs>
                 </Box>
+
+                <TabPanel value={selectedTab} index={0}>
+                    {renderUpdates(marketUpdates, marketScrollRef)}
+                </TabPanel>
+                <TabPanel value={selectedTab} index={1}>
+                    {renderUpdates(tradingUpdates, tradingScrollRef)}
+                </TabPanel>
             </DialogContent>
         </Dialog>
     );
