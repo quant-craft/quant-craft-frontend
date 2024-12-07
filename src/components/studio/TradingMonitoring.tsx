@@ -24,7 +24,7 @@ const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, bo
             return;
         }
 
-        const eventSource = new EventSourcePolyfill(`${getBackendUrl()}/api/stream/demo-tradings`, {
+        const eventSource = new EventSourcePolyfill(`${getBackendUrl()}/api/stream/demo-tradings/${botId}`, {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
             },
