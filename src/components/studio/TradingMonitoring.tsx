@@ -1,8 +1,7 @@
-// TradingMonitoring.tsx
 import React, { useEffect, useState, useRef } from 'react';
 import { Dialog, DialogTitle, DialogContent, Paper, Typography, Box, Button } from '@mui/material';
 import { getBackendUrl } from '../../config';
-import {EventSourcePolyfill} from "event-source-polyfill";
+import { EventSourcePolyfill } from "event-source-polyfill";
 
 interface TradingMonitoringProps {
     open: boolean;
@@ -24,16 +23,19 @@ const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, bo
             return;
         }
 
-        const eventSource = new EventSourcePolyfill(`${getBackendUrl()}/api/stream/demo-tradings/${botId}`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-            },
-            heartbeatTimeout: 120000,
-            withCredentials: true
-        });
+        const eventSource = new EventSourcePolyfill(
+            `${getBackendUrl()}/api/stream/demo-tradings/${botId}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                heartbeatTimeout: 180000,
+                withCredentials: true,
+            }
+        );
 
-        eventSource.onmessage = (event) => {
-            setUpdates(prev => [...prev, event.data]);
+        const handleMessage = (message: string) => {
+            setUpdates(prev => [...prev, message]);
             if (autoScroll && scrollRef.current) {
                 setTimeout(() => {
                     scrollRef.current?.scrollTo({
@@ -44,9 +46,17 @@ const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, bo
             }
         };
 
-        eventSource.onerror = (error) => {
-            console.error('SSE Error:', error);
-            eventSource.close();
+        // @ts-ignore
+        eventSource.addEventListener('INIT', (e) => handleMessage(`Connection established: ${e.data}`));
+        // @ts-ignore
+        eventSource.addEventListener('market.info', (e) => handleMessage(`Market Info: ${e.data}`));
+        // @ts-ignore
+        eventSource.addEventListener('trading.events', (e) => handleMessage(`Trading Event: ${e.data}`));
+        // @ts-ignore
+        eventSource.addEventListener('heartbeat', (e) => handleMessage(`Heartbeat: ${e.data}`));
+
+        eventSource.onerror = () => {
+            handleMessage('Connection lost. Attempting to reconnect...');
         };
 
         return () => {
