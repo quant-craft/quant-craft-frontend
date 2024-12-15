@@ -30,6 +30,21 @@ interface TabPanelProps {
     value: number;
 }
 
+interface CustomEventMap extends EventSourceEventMap {
+    'INIT': MessageEvent;
+    'market.info': MessageEvent;
+    'trading.events': MessageEvent;
+    'heartbeat': MessageEvent;
+}
+
+// EventSourcePolyfill의 타입을 확장
+interface CustomEventSource extends EventSourcePolyfill {
+    addEventListener<K extends keyof CustomEventMap>(
+        type: K,
+        listener: (event: CustomEventMap[K]) => void
+    ): void;
+}
+
 const TabPanel = (props: TabPanelProps) => {
     const { children, value, index, ...other } = props;
     return (
@@ -71,7 +86,7 @@ const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, bo
                 heartbeatTimeout: 180000,
                 withCredentials: true,
             }
-        );
+        ) as CustomEventSource;
 
         const handleScroll = (ref: React.RefObject<HTMLDivElement>) => {
             if (autoScroll && ref.current) {
@@ -84,8 +99,7 @@ const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, bo
             }
         };
 
-        // @ts-ignore
-        eventSource.addEventListener('INIT', (e) => {
+        eventSource.addEventListener('INIT', (e: MessageEvent) => {
             const update = { message: `Connection established: ${e.data}`, timestamp: Date.now() };
             setMarketUpdates(prev => [...prev, update]);
             setTradingUpdates(prev => [...prev, update]);
@@ -93,22 +107,19 @@ const TradingMonitoring: React.FC<TradingMonitoringProps> = ({ open, onClose, bo
             handleScroll(tradingScrollRef);
         });
 
-        // @ts-ignore
-        eventSource.addEventListener('market.info', (e) => {
+        eventSource.addEventListener('market.info', (e: MessageEvent) => {
             const update = { message: `Market Info: ${e.data}`, timestamp: Date.now() };
             setMarketUpdates(prev => [...prev, update]);
             handleScroll(marketScrollRef);
         });
 
-        // @ts-ignore
-        eventSource.addEventListener('trading.events', (e) => {
+        eventSource.addEventListener('trading.events', (e: MessageEvent) => {
             const update = { message: `Trading Event: ${e.data}`, timestamp: Date.now() };
             setTradingUpdates(prev => [...prev, update]);
             handleScroll(tradingScrollRef);
         });
 
-        // @ts-ignore
-        eventSource.addEventListener('heartbeat', (e) => {
+        eventSource.addEventListener('heartbeat', (e: MessageEvent) => {
             const update = { message: `Heartbeat: ${e.data}`, timestamp: Date.now() };
             setMarketUpdates(prev => [...prev, update]);
             setTradingUpdates(prev => [...prev, update]);
